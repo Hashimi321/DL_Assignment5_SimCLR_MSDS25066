@@ -13,6 +13,7 @@ import torchvision.transforms as T
 from torch.utils.data import DataLoader
 from dataset_splits import get_cifar10_subset
 from seed import set_seed
+import os
 
 # Fix random seed
 set_seed(2026)
@@ -191,43 +192,47 @@ def evaluate(model, loader, criterion):
 # Move model to device
 model = model.to(device)
 
-# Full training loop — 30 epochs
 EPOCHS = 30
-best_val_acc = 0.0
 
-# Lists to track progress over epochs
-train_losses, val_losses = [], []
-train_accs,   val_accs   = [], []
+# If model already trained and saved, skip retraining to save time
+# To retrain from scratch: delete supervised_best.pt and run again
+if os.path.exists("models/supervised_best.pt"):
+    print("\nFound saved model — skipping training")
+    model.load_state_dict(torch.load("models/supervised_best.pt",
+                                      map_location=device))
+    # Still need these for plotting
+    train_losses, val_losses = [], []
+    train_accs,   val_accs   = [], []
 
-print("\nStarting training...\n")
+else:
+    # Only train if no saved model found
+    best_val_acc = 0.0
+    train_losses, val_losses = [], []
+    train_accs,   val_accs   = [], []
 
-for epoch in range(1, EPOCHS + 1):
+    print("\nStarting training...\n")
 
-    # Train for one epoch
-    train_loss, train_acc = train_one_epoch(model, train_loader,
-                                            criterion, optimizer)
-    # Evaluate on validation set
-    val_loss, val_acc = evaluate(model, val_loader, criterion)
+    for epoch in range(1, EPOCHS + 1):
+        train_loss, train_acc = train_one_epoch(model, train_loader,
+                                                criterion, optimizer)
+        val_loss, val_acc = evaluate(model, val_loader, criterion)
 
-    # Save numbers for plotting later
-    train_losses.append(train_loss)
-    val_losses.append(val_loss)
-    train_accs.append(train_acc)
-    val_accs.append(val_acc)
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
+        train_accs.append(train_acc)
+        val_accs.append(val_acc)
 
-    # Save best model based on validation accuracy
-    if val_acc > best_val_acc:
-        best_val_acc = val_acc
-        torch.save(model.state_dict(), "models/supervised_best.pt")
+        if val_acc > best_val_acc:
+            best_val_acc = val_acc
+            torch.save(model.state_dict(), "models/supervised_best.pt")
 
-    # Print every 5 epochs
-    if epoch % 5 == 0 or epoch == 1:
-        print(f"Epoch {epoch:3d}/{EPOCHS} | "
-              f"Train Loss: {train_loss:.4f} | "
-              f"Val Loss: {val_loss:.4f} | "
-              f"Val Acc: {val_acc:.4f}")
+        if epoch % 5 == 0 or epoch == 1:
+            print(f"Epoch {epoch:3d}/{EPOCHS} | "
+                  f"Train Loss: {train_loss:.4f} | "
+                  f"Val Loss: {val_loss:.4f} | "
+                  f"Val Acc: {val_acc:.4f}")
 
-print(f"\nBest Val Accuracy: {best_val_acc:.4f}")
+    print(f"\nBest Val Accuracy: {best_val_acc:.4f}")
 
 
 
@@ -242,31 +247,59 @@ model.load_state_dict(torch.load("models/supervised_best.pt",
 test_loss, test_acc = evaluate(model, test_loader, criterion)
 print(f"\nFinal Test Accuracy: {test_acc:.4f} ({test_acc*100:.2f}%)")
 
-# Plot loss curves
+# Plot loss curves only if we have training history
 os.makedirs("graphs", exist_ok=True)
 
-epochs_range = range(1, EPOCHS + 1)
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+if len(train_losses) > 0:
+    epochs_range = range(1, len(train_losses) + 1)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
-# Loss plot
-ax1.plot(epochs_range, train_losses, label="Train Loss")
-ax1.plot(epochs_range, val_losses,   label="Val Loss")
-ax1.set_xlabel("Epoch")
-ax1.set_ylabel("Loss")
-ax1.set_title("Supervised Baseline - Loss")
-ax1.legend()
-ax1.grid(True)
+    ax1.plot(epochs_range, train_losses, label="Train Loss")
+    ax1.plot(epochs_range, val_losses,   label="Val Loss")
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Loss")
+    ax1.set_title("Supervised Baseline - Loss")
+    ax1.legend()
+    ax1.grid(True)
 
-# Accuracy plot
-ax2.plot(epochs_range, train_accs, label="Train Accuracy")
-ax2.plot(epochs_range, val_accs,   label="Val Accuracy")
-ax2.set_xlabel("Epoch")
-ax2.set_ylabel("Accuracy")
-ax2.set_title("Supervised Baseline - Accuracy")
-ax2.legend()
-ax2.grid(True)
+    ax2.plot(epochs_range, train_accs, label="Train Accuracy")
+    ax2.plot(epochs_range, val_accs,   label="Val Accuracy")
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Accuracy")
+    ax2.set_title("Supervised Baseline - Accuracy")
+    ax2.legend()
+    ax2.grid(True)
 
-plt.tight_layout()
-plt.savefig("graphs/supervised_loss.png", dpi=150)
-plt.close()
-print("Saved: graphs/supervised_loss.png")
+    plt.tight_layout()
+    plt.savefig("graphs/supervised_loss.png", dpi=150)
+    plt.close()
+    print("Saved: graphs/supervised_loss.png")
+else:
+    print("Graph already saved from previous training run")
+
+
+import sys
+sys.path.append("utils")
+from metrics import save_confusion_matrix
+
+# Collect all predictions on test set
+model.eval()
+all_preds  = []
+all_labels = []
+
+with torch.no_grad():
+    for images, labels in test_loader:
+        images  = images.to(device)
+        logits  = model(images)
+        preds   = logits.argmax(dim=1).cpu().tolist()
+        all_preds.extend(preds)
+        all_labels.extend(labels.tolist())
+
+# Save confusion matrix using TA's helper
+save_confusion_matrix(
+    y_true   = all_labels,
+    y_pred   = all_preds,
+    out_path = "results/supervised_confusion_matrix.png",
+    title    = "Supervised Baseline - Confusion Matrix"
+)
+print("Saved: results/supervised_confusion_matrix.png")
