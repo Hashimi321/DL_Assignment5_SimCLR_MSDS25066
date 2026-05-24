@@ -66,3 +66,37 @@ test_dataset = get_cifar10_subset(
 
 print(f"Validation samples : {len(val_dataset)}")
 print(f"Test samples       : {len(test_dataset)}")
+
+
+import torchvision.models as models
+import torch.nn as nn
+
+def build_model():
+    # Load ResNet-18 with NO pretrained weights
+    model = models.resnet18(weights=None)
+
+    # CIFAR-10 images are 32x32 — original ResNet was designed for 224x224
+    # So we make two changes:
+
+    # Change 1: smaller first convolution layer
+    # Original: 7x7 kernel, stride 2 (too aggressive for small images)
+    # Modified: 3x3 kernel, stride 1 (gentler, preserves more information)
+    model.conv1 = nn.Conv2d(3, 64, kernel_size=3,
+                            stride=1, padding=1, bias=False)
+
+    # Change 2: remove the max pooling layer
+    # Original maxpool shrinks image too much for 32x32 input
+    model.maxpool = nn.Identity()
+
+    # Change 3: final layer outputs 10 classes (not 1000 like ImageNet)
+    model.fc = nn.Linear(512, 10)
+
+    return model
+
+# Build the model
+model = build_model()
+print(f"\nModel built successfully")
+
+# Count total parameters
+total_params = sum(p.numel() for p in model.parameters())
+print(f"Total parameters: {total_params:,}")
