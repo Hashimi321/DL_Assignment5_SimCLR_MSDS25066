@@ -43,3 +43,26 @@ print(f"Training samples: {len(train_dataset)}")
 image, label = train_dataset[0]
 print(f"Image shape : {image.shape}")
 print(f"Label       : {label}")
+
+# Load validation dataset
+# NOTE: val.txt has indices from the TRAIN set (not test set)
+val_dataset = get_cifar10_subset(
+    data_root  = "data",
+    split_file = "splits/val.txt",
+    train      = True,       # <-- True because val comes from train set
+    transform  = transform,
+    download   = False
+)
+
+# Load test dataset
+# NOTE: test.txt has indices from the TEST set
+test_dataset = get_cifar10_subset(
+    data_root  = "data",
+    split_file = "splits/test.txt",
+    train      = False,      # <-- False because test comes from test set
+    transform  = transform,
+    download   = False
+)
+
+print(f"Validation samples : {len(val_dataset)}")
+print(f"Test samples       : {len(test_dataset)}")
