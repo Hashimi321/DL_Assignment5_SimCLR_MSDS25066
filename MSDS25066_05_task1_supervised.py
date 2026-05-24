@@ -229,3 +229,44 @@ for epoch in range(1, EPOCHS + 1):
 
 print(f"\nBest Val Accuracy: {best_val_acc:.4f}")
 
+
+
+import matplotlib.pyplot as plt
+import os
+
+# Load the best saved model
+model.load_state_dict(torch.load("models/supervised_best.pt",
+                                  map_location=device))
+
+# Evaluate on test set
+test_loss, test_acc = evaluate(model, test_loader, criterion)
+print(f"\nFinal Test Accuracy: {test_acc:.4f} ({test_acc*100:.2f}%)")
+
+# Plot loss curves
+os.makedirs("graphs", exist_ok=True)
+
+epochs_range = range(1, EPOCHS + 1)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+# Loss plot
+ax1.plot(epochs_range, train_losses, label="Train Loss")
+ax1.plot(epochs_range, val_losses,   label="Val Loss")
+ax1.set_xlabel("Epoch")
+ax1.set_ylabel("Loss")
+ax1.set_title("Supervised Baseline - Loss")
+ax1.legend()
+ax1.grid(True)
+
+# Accuracy plot
+ax2.plot(epochs_range, train_accs, label="Train Accuracy")
+ax2.plot(epochs_range, val_accs,   label="Val Accuracy")
+ax2.set_xlabel("Epoch")
+ax2.set_ylabel("Accuracy")
+ax2.set_title("Supervised Baseline - Accuracy")
+ax2.legend()
+ax2.grid(True)
+
+plt.tight_layout()
+plt.savefig("graphs/supervised_loss.png", dpi=150)
+plt.close()
+print("Saved: graphs/supervised_loss.png")
