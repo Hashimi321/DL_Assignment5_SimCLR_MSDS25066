@@ -161,13 +161,6 @@ def train_one_epoch(model, loader, criterion, optimizer):
     accuracy = total_correct / total_samples
     return avg_loss, accuracy
 
-# Test with just ONE epoch to make sure it works
-model = model.to(device)
-train_loss, train_acc = train_one_epoch(model, train_loader,
-                                        criterion, optimizer)
-print(f"\nEpoch 1 — Loss: {train_loss:.4f} | Accuracy: {train_acc:.4f}")
-
-
 
 
 def evaluate(model, loader, criterion):
@@ -193,6 +186,46 @@ def evaluate(model, loader, criterion):
     accuracy = total_correct / total_samples
     return avg_loss, accuracy
 
-# Test evaluation on validation set
-val_loss, val_acc = evaluate(model, val_loader, criterion)
-print(f"Val   — Loss: {val_loss:.4f} | Accuracy: {val_acc:.4f}")
+
+
+# Move model to device
+model = model.to(device)
+
+# Full training loop — 30 epochs
+EPOCHS = 30
+best_val_acc = 0.0
+
+# Lists to track progress over epochs
+train_losses, val_losses = [], []
+train_accs,   val_accs   = [], []
+
+print("\nStarting training...\n")
+
+for epoch in range(1, EPOCHS + 1):
+
+    # Train for one epoch
+    train_loss, train_acc = train_one_epoch(model, train_loader,
+                                            criterion, optimizer)
+    # Evaluate on validation set
+    val_loss, val_acc = evaluate(model, val_loader, criterion)
+
+    # Save numbers for plotting later
+    train_losses.append(train_loss)
+    val_losses.append(val_loss)
+    train_accs.append(train_acc)
+    val_accs.append(val_acc)
+
+    # Save best model based on validation accuracy
+    if val_acc > best_val_acc:
+        best_val_acc = val_acc
+        torch.save(model.state_dict(), "models/supervised_best.pt")
+
+    # Print every 5 epochs
+    if epoch % 5 == 0 or epoch == 1:
+        print(f"Epoch {epoch:3d}/{EPOCHS} | "
+              f"Train Loss: {train_loss:.4f} | "
+              f"Val Loss: {val_loss:.4f} | "
+              f"Val Acc: {val_acc:.4f}")
+
+print(f"\nBest Val Accuracy: {best_val_acc:.4f}")
+
