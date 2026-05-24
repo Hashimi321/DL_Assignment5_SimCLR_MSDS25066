@@ -100,3 +100,23 @@ print(f"\nModel built successfully")
 # Count total parameters
 total_params = sum(p.numel() for p in model.parameters())
 print(f"Total parameters: {total_params:,}")
+
+
+
+# DataLoader wraps dataset and serves images in batches
+# shuffle=True for training — randomizes order every epoch
+# shuffle=False for val/test — consistent evaluation
+
+train_loader = DataLoader(train_dataset, batch_size=64,
+                          shuffle=True,  num_workers=0)
+
+val_loader   = DataLoader(val_dataset,   batch_size=64,
+                          shuffle=False, num_workers=0)
+
+test_loader  = DataLoader(test_dataset,  batch_size=64,
+                          shuffle=False, num_workers=0)
+
+# Test the loader — get one batch and check its shape
+images, labels = next(iter(train_loader))
+print(f"\nOne batch of images shape : {images.shape}")
+print(f"One batch of labels shape : {labels.shape}")
