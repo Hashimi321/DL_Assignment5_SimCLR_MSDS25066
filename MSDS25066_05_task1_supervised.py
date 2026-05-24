@@ -166,3 +166,33 @@ model = model.to(device)
 train_loss, train_acc = train_one_epoch(model, train_loader,
                                         criterion, optimizer)
 print(f"\nEpoch 1 — Loss: {train_loss:.4f} | Accuracy: {train_acc:.4f}")
+
+
+
+
+def evaluate(model, loader, criterion):
+    model.eval()   # evaluation mode — no dropout, no weight updates
+    total_loss    = 0.0
+    total_correct = 0
+    total_samples = 0
+
+    with torch.no_grad():   # do not calculate gradients — saves memory
+        for images, labels in loader:
+            images = images.to(device)
+            labels = labels.to(device)
+
+            logits      = model(images)
+            loss        = criterion(logits, labels)
+
+            total_loss    += loss.item() * images.size(0)
+            predictions    = logits.argmax(dim=1)
+            total_correct += (predictions == labels).sum().item()
+            total_samples += images.size(0)
+
+    avg_loss = total_loss / total_samples
+    accuracy = total_correct / total_samples
+    return avg_loss, accuracy
+
+# Test evaluation on validation set
+val_loss, val_acc = evaluate(model, val_loader, criterion)
+print(f"Val   — Loss: {val_loss:.4f} | Accuracy: {val_acc:.4f}")
