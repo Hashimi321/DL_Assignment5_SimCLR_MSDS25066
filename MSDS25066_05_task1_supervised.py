@@ -120,3 +120,49 @@ test_loader  = DataLoader(test_dataset,  batch_size=64,
 images, labels = next(iter(train_loader))
 print(f"\nOne batch of images shape : {images.shape}")
 print(f"One batch of labels shape : {labels.shape}")
+
+
+import torch.optim as optim
+
+# Loss function — measures how wrong the predictions are
+criterion = nn.CrossEntropyLoss()
+
+# Optimizer — updates model weights to reduce loss
+optimizer = optim.Adam(model.parameters(), lr=3e-4)
+
+def train_one_epoch(model, loader, criterion, optimizer):
+    model.train()  # training mode
+    total_loss    = 0.0
+    total_correct = 0
+    total_samples = 0
+
+    for images, labels in loader:
+        images = images.to(device)
+        labels = labels.to(device)
+
+        # Forward pass — model makes predictions
+        logits = model(images)
+
+        # Calculate loss
+        loss = criterion(logits, labels)
+
+        # Backward pass — calculate gradients
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        # Track progress
+        total_loss    += loss.item() * images.size(0)
+        predictions    = logits.argmax(dim=1)
+        total_correct += (predictions == labels).sum().item()
+        total_samples += images.size(0)
+
+    avg_loss = total_loss / total_samples
+    accuracy = total_correct / total_samples
+    return avg_loss, accuracy
+
+# Test with just ONE epoch to make sure it works
+model = model.to(device)
+train_loss, train_acc = train_one_epoch(model, train_loader,
+                                        criterion, optimizer)
+print(f"\nEpoch 1 — Loss: {train_loss:.4f} | Accuracy: {train_acc:.4f}")
