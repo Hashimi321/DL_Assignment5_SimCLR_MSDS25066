@@ -151,3 +151,42 @@ dummy_z2  = torch.randn(4, 128).to(device)
 loss      = criterion(dummy_z1, dummy_z2)
 print(f"NT-Xent loss test: {loss.item():.4f}")
 print("Expected: around 2.0 to 3.0 for random inputs")
+
+
+import matplotlib.pyplot as plt
+import os
+
+def visualize_similarity_matrix(z1, z2, save_path):
+    """
+    Visualize 2N x 2N cosine similarity matrix as heatmap.
+    Positive pairs should be visible off the diagonal.
+    """
+    N = z1.shape[0]
+
+    # Normalize and concatenate
+    z1_norm = F.normalize(z1, dim=1)
+    z2_norm = F.normalize(z2, dim=1)
+    z       = torch.cat([z1_norm, z2_norm], dim=0)
+
+    # Compute similarity matrix
+    sim_matrix = torch.mm(z, z.T).detach().cpu().numpy()
+
+    os.makedirs("results", exist_ok=True)
+    fig, ax = plt.subplots(figsize=(8, 7))
+    im = ax.imshow(sim_matrix, cmap="coolwarm", vmin=-1, vmax=1)
+    plt.colorbar(im)
+
+    ax.set_title("Similarity Matrix Before SimCLR Training")
+    ax.set_xlabel("View Index")
+    ax.set_ylabel("View Index")
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.close()
+    print(f"Saved: {save_path}")
+
+# Test with small batch
+visualize_similarity_matrix(
+    dummy_z1,
+    dummy_z2,
+    "results/similarity_matrix_before_training.png"
+)
