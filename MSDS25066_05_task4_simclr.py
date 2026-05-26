@@ -101,3 +101,53 @@ features, projections = simclr_model(dummy_images)
 print(f"SimCLR input       shape: {dummy_images.shape}")
 print(f"SimCLR features    shape: {features.shape}")
 print(f"SimCLR projections shape: {projections.shape}")
+
+
+import torch.nn.functional as F
+
+class NTXentLoss(nn.Module):
+    def __init__(self, temperature=0.5):
+        super().__init__()
+        # Temperature controls how sharp the separation is
+        # Lower = sharper separation between positive and negative
+        self.temperature = temperature
+
+    def forward(self, z1, z2):
+        """
+        z1: projections from view 1 — shape [N, 128]
+        z2: projections from view 2 — shape [N, 128]
+        """
+        N = z1.shape[0]  # batch size
+
+        # Step 1: Normalize vectors to unit length
+        z1 = F.normalize(z1, dim=1)
+        z2 = F.normalize(z2, dim=1)
+
+        # Step 2: Concatenate all projections
+        # Shape: [2N, 128]
+        z = torch.cat([z1, z2], dim=0)
+
+        # Step 3: Compute full similarity matrix
+        # Shape: [2N, 2N]
+        sim_matrix = torch.mm(z, z.T) / self.temperature
+
+        # Step 4: Remove diagonal (similarity of vector with itself)
+        mask = torch.eye(2 * N, dtype=torch.bool).to(z.device)
+        sim_matrix = sim_matrix.masked_fill(mask, float('-inf'))
+
+        # Step 5: Positive pair labels
+        # For view1[i], positive is view2[i] which is at index i+N
+        labels = torch.arange(N).to(z.device)
+        labels = torch.cat([labels + N, labels], dim=0)
+
+        # Step 6: Cross entropy loss
+        loss = F.cross_entropy(sim_matrix, labels)
+        return loss
+
+# Test NT-Xent loss
+criterion = NTXentLoss(temperature=0.5)
+dummy_z1  = torch.randn(4, 128).to(device)
+dummy_z2  = torch.randn(4, 128).to(device)
+loss      = criterion(dummy_z1, dummy_z2)
+print(f"NT-Xent loss test: {loss.item():.4f}")
+print("Expected: around 2.0 to 3.0 for random inputs")
