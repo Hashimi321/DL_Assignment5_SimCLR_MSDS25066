@@ -122,3 +122,59 @@ train_loader = DataLoader(unlabeled_dataset, batch_size=64,
 
 print(f"Unlabeled samples : {len(unlabeled_dataset)}")
 print(f"Batches per epoch : {len(train_loader)}")
+
+
+
+import os
+
+# Build model, loss, optimizer
+model     = SimCLR().to(device)
+criterion = NTXentLoss(temperature=0.5)
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
+
+# Training settings
+EPOCHS = 50
+
+os.makedirs("models",  exist_ok=True)
+os.makedirs("graphs",  exist_ok=True)
+
+print("\nStarting SimCLR pretraining...")
+print(f"Epochs: {EPOCHS} | Batch size: 64 | Temperature: 0.5\n")
+
+loss_history = []
+
+for epoch in range(1, EPOCHS + 1):
+    model.train()
+    total_loss    = 0.0
+    total_batches = 0
+
+    for (view1, view2), _ in train_loader:
+        # NOTE: we ignore labels — unsupervised training
+        view1 = view1.to(device)
+        view2 = view2.to(device)
+
+        # Forward pass
+        _, z1 = model(view1)
+        _, z2 = model(view2)
+
+        # Compute NT-Xent loss
+        loss = criterion(z1, z2)
+
+        # Backward pass
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        total_loss    += loss.item()
+        total_batches += 1
+
+    avg_loss = total_loss / total_batches
+    loss_history.append(avg_loss)
+
+    if epoch % 5 == 0 or epoch == 1:
+        print(f"Epoch {epoch:3d}/{EPOCHS} | Loss: {avg_loss:.4f}")
+
+# Save trained encoder
+torch.save(model.encoder.state_dict(),
+           "models/simclr_encoder.pt")
+print("\nSaved: models/simclr_encoder.pt")
