@@ -188,3 +188,59 @@ for epoch in range(1, EPOCHS + 1):
               f"Val Acc: {val_acc:.4f}")
 
 print(f"\nBest Val Accuracy: {best_val_acc:.4f}")
+
+
+
+
+# Test accuracy
+model.load_state_dict(torch.load("models/finetuned_model.pt",
+                                  map_location=device))
+model.eval()
+correct = 0
+total   = 0
+with torch.no_grad():
+    for images, labels in test_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+        logits = model(images)
+        preds  = logits.argmax(dim=1)
+        correct += (preds == labels).sum().item()
+        total   += images.size(0)
+
+finetune_test_acc = correct / total
+print(f"\nFine-tune Test Accuracy: {finetune_test_acc:.4f}")
+
+# Final comparison table
+print(f"\n{'='*55}")
+print(f"Supervised 10% labels          : 0.5310")
+print(f"Random frozen + linear         : 0.2781")
+print(f"SimCLR frozen + linear         : 0.7500")
+print(f"SimCLR pretrained + fine-tuning: {finetune_test_acc:.4f}")
+print(f"{'='*55}")
+
+# Save comparison plot
+import matplotlib.pyplot as plt
+
+models_names = ["Supervised\n10% labels",
+                "Random\nLinear Probe",
+                "SimCLR\nLinear Probe",
+                "SimCLR\nFine-tuning"]
+accuracies   = [0.5310, 0.2781, 0.7500, finetune_test_acc]
+colors       = ["gray", "salmon", "steelblue", "green"]
+
+plt.figure(figsize=(9, 5))
+bars = plt.bar(models_names, accuracies, color=colors)
+plt.ylabel("Test Accuracy")
+plt.title("Model Comparison - All Experiments")
+plt.ylim(0, 1.0)
+
+for bar, acc in zip(bars, accuracies):
+    plt.text(bar.get_x() + bar.get_width()/2,
+             bar.get_height() + 0.01,
+             f"{acc:.4f}", ha="center")
+
+plt.tight_layout()
+os.makedirs("graphs", exist_ok=True)
+plt.savefig("graphs/finetuning_accuracy.png", dpi=150)
+plt.close()
+print("Saved: graphs/finetuning_accuracy.png")
