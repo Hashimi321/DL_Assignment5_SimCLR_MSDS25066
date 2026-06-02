@@ -1,0 +1,29 @@
+
+import json
+
+metrics = {
+    "student_name"                   : "Saad Ali",
+    "roll_number"                    : "MSDS25066",
+    "seed"                           : 2026,
+    "batch_size"                     : 64,
+    "simclr_epochs"                  : 50,
+    "linear_probe_epochs"            : 20,
+    "finetuning_epochs"              : 20,
+    "learning_rate"                  : 0.0003,
+    "temperature"                    : 0.5,
+    "supervised_10percent_test_acc"  : 0.5310,
+    "random_linear_probe_test_acc"   : 0.2781,
+    "simclr_linear_probe_test_acc"   : 0.7500,
+    "simclr_finetune_test_acc"       : 0.8161,
+    "same_view_similarity_before"    : 0.9881,
+    "different_image_similarity_before": 0.9845,
+    "same_view_similarity_after"     : 0.9245,
+    "different_image_similarity_after": 0.3221,
+    "github_repo_url"                : "https://github.com/Hashimi321/DL_Assignment5_SimCLR_MSDS25066",
+    "number_of_meaningful_commits"   : 0
+}
+
+with open("results/metrics.json", "w") as f:
+    json.dump(metrics, f, indent=2)
+
+print("Saved: results/metrics.json")
